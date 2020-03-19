@@ -1,0 +1,177 @@
+#!/bin/bash
+# /etc/init.d/minecraft
+# version 0.4.2 2016-02-09 (YYYY-MM-DD)
+#
+### BEGIN INIT INFO
+# Provides:   minecraft
+# Required-Start: $local_fs $remote_fs screen-cleanup
+# Required-Stop:  $local_fs $remote_fs
+# Should-Start:   $network
+# Should-Stop:    $network
+# Default-Start:  2 3 4 5
+# Default-Stop:   0 1 6
+# Short-Description:    Minecraft server
+# Description:    Starts the minecraft bedrock server
+### END INIT INFO
+
+#Settings
+SERVICE='bedrock_server'
+SCREENNAME='mc'
+USERNAME='root'
+WORLD='worlds'
+MCPATH='/root/minecraft'
+BACKUPPATH='/root/minecraft/worlds.backup'
+INVOCATION="LD_LIBRARY_PATH=. ./bedrock_server"
+
+ME=`whoami`
+as_user() {
+  if [ "$ME" = "$USERNAME" ] ; then
+    bash -c "$1"
+  else
+    su - "$USERNAME" -c "$1"
+  fi
+}
+
+mc_start() {
+  if  pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+    echo "$SERVICE is already running!"
+  else
+    echo "Starting $SERVICE..."
+    cd $MCPATH
+    as_user "cd $MCPATH && screen -dmS ${SCREENNAME} /bin/bash -c \"$INVOCATION\""
+#    as_user "cd $MCPATH && screen -dmS ${SCREENNAME} /bin/bash -c $INVOCATION"
+    sleep 7
+    if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+      echo "$SERVICE is now running."
+    else
+      echo "Error! Could not start $SERVICE!"
+    fi
+  fi
+}
+
+mc_saveoff() {
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+    echo "$SERVICE is running... suspending saves"
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER BACKUP STARTING...\"\015'"
+#    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"save-off\"\015'"
+#    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"save-all\"\015'"
+    sync
+    sleep 5
+  else
+    echo "$SERVICE is not running. Not suspending saves."
+  fi
+}
+
+mc_saveon() {
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+    echo "$SERVICE is running... re-enabling saves"
+#    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"save-on\"\015'"
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER BACKUP ENDED.\"\015'"
+  else
+    echo "$SERVICE is not running. Not resuming saves."
+  fi
+}
+
+mc_stop() {
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+    echo "Stopping $SERVICE"
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER SHUTTING DOWN IN 10 SECONDS...\"\015'"
+#    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"save-all\"\015'"
+    sleep 5
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER SHUTTING DOWN IN 5 SECONDS...\"\015'"
+    sleep 2
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER SHUTTING DOWN IN 3 SECONDS...\"\015'"
+    sleep 1
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER SHUTTING DOWN IN 2 SECONDS...\"\015'"
+    sleep 1
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER SHUTTING DOWN IN 1 SECONDS...\"\015'"
+    sleep 1
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"stop\"\015'"
+    sleep 3
+  else
+    echo "$SERVICE was not running."
+  fi
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+    echo "Error! $SERVICE could not be stopped. Close screen manually."
+    as_user "screen -S ${SCREENNAME} -X quit"
+  else
+    echo "$SERVICE is stopped."
+  fi
+}
+
+mc_backup() {
+   mc_saveoff
+   
+   NOW=`date "+%Y-%m-%d_%H%M%S"`
+   BACKUP_FILE="$BACKUPPATH/${WORLD}_${NOW}.tar"
+   echo "Backing up minecraft world..."
+   #as_user "cd $MCPATH && cp -r $WORLD $BACKUPPATH/${WORLD}_`date "+%Y.%m.%d_%H.%M"`"
+   as_user "tar -C \"$MCPATH\" -cf \"$BACKUP_FILE\" $WORLD"
+
+#   echo "Backing up $SERVICE"
+#   as_user "tar -C \"$MCPATH\" -rf \"$BACKUP_FILE\" $SERVICE"
+#   #as_user "cp \"$MCPATH/$SERVICE\" \"$BACKUPPATH/minecraft_server_${NOW}.jar\""
+
+   mc_saveon
+
+   echo "Compressing backup..."
+   as_user "gzip -f \"$BACKUP_FILE\""
+
+   echo "Removing backup older than 7 days..."
+   as_user "find $BACKUPPATH -maxdepth 1 -name '*\.tar\.gz' -type f -mtime +6 -exec rm -vf '{}' \;"
+
+   echo "Done."
+}
+
+mc_command() {
+  command="$1";
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+#    pre_log_len=`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`
+    echo "$SERVICE is running... executing command"
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
+    echo "$command"
+#    sleep .1 # assumes that the command will run and print to the log file in less than .1 seconds
+    # print output
+#    tail -n $((`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`-$pre_log_len)) "$MCPATH/logs/latest.log"
+  fi
+}
+
+ 
+#Start-Stop here
+case "$1" in
+  start)
+    mc_start
+    ;;
+  stop)
+    mc_stop
+    ;;
+  restart)
+    mc_stop
+    mc_start
+    ;;
+  backup)
+    mc_backup
+    ;;
+  status)
+    if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+      echo "$SERVICE is running."
+    else
+      echo "$SERVICE is not running."
+    fi
+    ;;
+  command)
+    if [ $# -gt 1 ] ; then
+      shift
+      mc_command "$*"
+    else
+      echo "Must specify server command (try 'help'?)"
+    fi
+    ;;
+
+  *)
+    echo "Usage: $0 {start|stop|backup|status|restart|command \"server command\"}"
+    exit 1
+    ;;
+esac
+
+exit 0
