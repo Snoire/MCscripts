@@ -21,7 +21,8 @@ USERNAME='root'
 WORLD='worlds'
 MCPATH='/root/minecraft'
 BACKUPPATH='/root/minecraft/worlds.backup'
-INVOCATION="LD_LIBRARY_PATH=. ./bedrock_server"
+#INVOCATION="LD_LIBRARY_PATH=. ./bedrock_server"
+INVOCATION="LD_LIBRARY_PATH=. ./bedrock_server 2>&1 | tee logs/latest.log"
 
 ME=`whoami`
 as_user() {
@@ -126,13 +127,13 @@ mc_backup() {
 mc_command() {
   command="$1";
   if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
-#    pre_log_len=`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`
+    pre_log_len=`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`
     echo "$SERVICE is running... executing command"
-    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
     echo "$command"
-#    sleep .1 # assumes that the command will run and print to the log file in less than .1 seconds
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
+    sleep .1 # assumes that the command will run and print to the log file in less than .1 seconds
     # print output
-#    tail -n $((`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`-$pre_log_len)) "$MCPATH/logs/latest.log"
+    tail -n $((`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`-$pre_log_len)) "$MCPATH/logs/latest.log"
   fi
 }
 
@@ -170,6 +171,11 @@ case "$1" in
 
   *)
     echo "Usage: $0 {start|stop|backup|status|restart|command \"server command\"}"
+    if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+      echo "$SERVICE is running."
+    else
+      echo "$SERVICE is not running."
+    fi
     exit 1
     ;;
 esac
