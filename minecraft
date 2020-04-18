@@ -17,10 +17,10 @@
 #Settings
 SERVICE='bedrock_server'
 SCREENNAME='mc'
-USERNAME='root'
+USERNAME='mc'
 WORLD='worlds'
-MCPATH='/root/minecraft'
-BACKUPPATH='/root/minecraft/worlds.backup'
+MCPATH='/home/mc/minecraft'
+BACKUPPATH='/home/mc/minecraft/worlds.backup'
 #INVOCATION="LD_LIBRARY_PATH=. ./bedrock_server"
 INVOCATION="LD_LIBRARY_PATH=. ./bedrock_server 2>&1 | tee logs/latest.log"
 
@@ -39,6 +39,7 @@ mc_start() {
   else
     echo "Starting $SERVICE..."
     cd $MCPATH
+    touch logs/empty_`date "+%Y-%m-%d_%H%M%S"`.log
     as_user "cd $MCPATH && screen -dmS ${SCREENNAME} /bin/bash -c \"$INVOCATION\""
 #    as_user "cd $MCPATH && screen -dmS ${SCREENNAME} /bin/bash -c $INVOCATION"
     sleep 7
@@ -87,21 +88,35 @@ mc_stop() {
     sleep 1
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER SHUTTING DOWN IN 1 SECONDS...\"\015'"
     sleep 1
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say stop...\"\015'"
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"stop\"\015'"
-    sleep 3
+    sleep 6
+    mc_log
+#    as_user "screen -S ${SCREENNAME} -X quit"
   else
     echo "$SERVICE was not running."
   fi
+
   if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
     echo "Error! $SERVICE could not be stopped. Close screen manually."
     as_user "screen -S ${SCREENNAME} -X quit"
+#    rm -f "$MCPATH/logs/empty_"*
   else
     echo "$SERVICE is stopped."
   fi
 }
 
+mc_log() {
+    cd $MCPATH
+    EMPTYFILE=`ls logs/empty*`
+    EMPTYFILE=${EMPTYFILE/#logs\/empty_/}
+    mv -f "logs/latest.log" "logs/$EMPTYFILE"
+    ln -sf "$EMPTYFILE" "logs/previous.log"
+    rm -f "$MCPATH/logs/empty_"*
+}
+
 mc_backup() {
-   mc_saveoff
+#   mc_saveoff
    
    NOW=`date "+%Y-%m-%d_%H%M%S"`
    BACKUP_FILE="$BACKUPPATH/${WORLD}_${NOW}.tar"
@@ -113,13 +128,16 @@ mc_backup() {
 #   as_user "tar -C \"$MCPATH\" -rf \"$BACKUP_FILE\" $SERVICE"
 #   #as_user "cp \"$MCPATH/$SERVICE\" \"$BACKUPPATH/minecraft_server_${NOW}.jar\""
 
-   mc_saveon
+#   mc_saveon
+}
+
+mc_compress() {
 
    echo "Compressing backup..."
    as_user "gzip -f \"$BACKUP_FILE\""
 
-   echo "Removing backup older than 7 days..."
-   as_user "find $BACKUPPATH -maxdepth 1 -name '*\.tar\.gz' -type f -mtime +6 -exec rm -vf '{}' \;"
+   echo "Removing backup older than 3 days..."
+   as_user "find $BACKUPPATH -maxdepth 1 -name '*\.tar\.gz' -type f -mtime +2 -exec rm -vf '{}' \;"
 
    echo "Done."
 }
@@ -128,10 +146,10 @@ mc_command() {
   command="$1";
   if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
     pre_log_len=`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`
-    echo "$SERVICE is running... executing command"
+#    echo "$SERVICE is running... executing command"
     echo "$command"
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
-    sleep .1 # assumes that the command will run and print to the log file in less than .1 seconds
+    sleep .4 # assumes that the command will run and print to the log file in less than .4 seconds
     # print output
     tail -n $((`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`-$pre_log_len)) "$MCPATH/logs/latest.log"
   fi
@@ -151,7 +169,16 @@ case "$1" in
     mc_start
     ;;
   backup)
+    mc_saveoff
     mc_backup
+    mc_saveon
+    mc_compress
+    ;;
+  sbackup)
+    mc_stop
+    mc_backup
+    mc_start
+    mc_compress
     ;;
   status)
     if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
@@ -170,12 +197,12 @@ case "$1" in
     ;;
 
   *)
-    echo "Usage: $0 {start|stop|backup|status|restart|command \"server command\"}"
-    if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
-      echo "$SERVICE is running."
-    else
-      echo "$SERVICE is not running."
-    fi
+    echo "Usage: $0 {start|stop|backup|sbackup|status|restart|command \"server command\"}"
+#    if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
+#      echo "$SERVICE is running."
+#    else
+#      echo "$SERVICE is not running."
+#    fi
     exit 1
     ;;
 esac
