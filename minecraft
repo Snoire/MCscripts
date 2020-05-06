@@ -17,11 +17,13 @@
 #Settings
 SERVICE='bedrock_server'
 SCREENNAME='mc'
+SCREENNAME2='inotify'
 USERNAME='mc'
 WORLD='survival'
 MCPATH='/home/mc/minecraft'
 BACKUPPATH='/home/mc/minecraft/worlds.backup'
 INVOCATION="LD_LIBRARY_PATH=. ./bedrock_server 2>&1 | tee logs/latest.log"
+INVOCATION2="inotify ~mc/minecraft/logs/latest.log"
 
 ME=`whoami`
 as_user() {
@@ -38,8 +40,10 @@ mc_start() {
   else
     echo "Starting $SERVICE..."
     cd $MCPATH
+    rm -f "$MCPATH/logs/empty_"*
     touch logs/empty_`date "+%Y-%m-%d_%H%M%S"`.log
     as_user "cd $MCPATH && screen -dmS ${SCREENNAME} /bin/bash -c \"$INVOCATION\""
+    as_user "screen -dmS ${SCREENNAME2} /bin/bash -c \"$INVOCATION2\""
 #    as_user "cd $MCPATH && screen -dmS ${SCREENNAME} /bin/bash -c $INVOCATION"
     sleep 7
     if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
@@ -91,6 +95,7 @@ mc_stop() {
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"stop\"\015'"
     sleep 6
     mc_log
+    killall inotify
 #    as_user "screen -S ${SCREENNAME} -X quit"
   else
     echo "$SERVICE was not running."
