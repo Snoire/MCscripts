@@ -37,8 +37,6 @@ static char *handleEvent(struct inotify_event *i, const char *file, char *p)
     bytes_count = ftell(fp);
     fseek(fp, -MIN(bytes_count, LINELEN), SEEK_CUR);
 
-//    bytes_count = ftell(fp);
-
     int ret = 0;
     while (ret != EOF) {
         ret = fscanf(fp, "%"STR(LINELEN)"[^\n]%*c", str);
@@ -55,6 +53,7 @@ static char *handleEvent(struct inotify_event *i, const char *file, char *p)
             free(p);
             return NULL;
         } else if (strstr(str, "No targets matched selector")) {
+            sleep(4);                            //time between every check
             system(p);
             fclose(fp);
             return p;
@@ -64,11 +63,9 @@ static char *handleEvent(struct inotify_event *i, const char *file, char *p)
         }
     }
 
-
     p2 = strstr(p1+18, ",");
 
     strncpy(player, p1+18, strlen(p1)-strlen(p2)-18);
-//    printf("player: %s\n", player);
 
     for (int i=0; i<=strlen(player); i++) {
         if (player[i]>='A' && player[i]<='Z')
@@ -77,9 +74,8 @@ static char *handleEvent(struct inotify_event *i, const char *file, char *p)
             player_lowercase[i] = player[i];
     }
 
-//    printf("player_lowercase: %s\n", player_lowercase);
     sprintf(cmdstr, "mc command \"w %s hi %s, welcome!\"", player_lowercase, player);
-//    printf("cmdstr: %s\n", cmdstr);
+
     sleep(8);                            //wait
     system(cmdstr);
     fclose(fp);
@@ -107,11 +103,7 @@ int main(int argc, char *argv[])
         wd = inotify_add_watch(inotifyFd, argv[j], IN_MODIFY);
         if (wd == -1)
             errExit("inotify_add_watch");
-
-//        printf("Watching %s using wd %d\n", argv[j], wd);
     }
-
-//    printf("buf_len: %ld\n", BUF_LEN);
 
     for (;;) {                                  /* Read events forever */
         numRead = read(inotifyFd, buf, BUF_LEN);
@@ -123,14 +115,9 @@ int main(int argc, char *argv[])
         if (numRead == -1)
             errExit("read");
 
-//        printf("Read %ld bytes from inotify fd\n", (long) numRead);
-
         /* Process all of the events in buffer returned by read() */
         p = handleEvent((struct inotify_event *) buf, argv[1], p);
-        sleep(4);                            //time between every check
-
     }
 
     return 0;
 }
-
