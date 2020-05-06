@@ -94,8 +94,9 @@ mc_stop() {
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say stop...\"\015'"
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"stop\"\015'"
     sleep 6
+#    killall inotify
+    as_user "screen -S ${SCREENNAME2} -X quit"
     mc_log
-    killall inotify
 #    as_user "screen -S ${SCREENNAME} -X quit"
   else
     echo "$SERVICE was not running."
@@ -134,6 +135,12 @@ mc_backup() {
     echo "Done."
 }
 
+mc_cloudbak() {
+    cd $BACKUPPATH
+    BACKUPFILE=`ls -t *mcworld | head -1`
+    dav $BACKUPFILE
+}
+
 mc_command() {
   command="$1";
   if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
@@ -170,6 +177,9 @@ case "$1" in
     mc_backup
     mc_start
     ;;
+  cloudbak)
+    mc_cloudbak
+    ;;
   status)
     if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
       echo "$SERVICE is running."
@@ -187,7 +197,7 @@ case "$1" in
     ;;
 
   *)
-    echo "Usage: $0 {start|stop|backup|sbackup|status|restart|command \"server command\"}"
+    echo "Usage: $0 {start|stop|backup|sbackup|cloudbak|status|restart|command \"server command\"}"
     exit 1
     ;;
 esac
