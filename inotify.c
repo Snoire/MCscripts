@@ -11,7 +11,7 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define BUF_LEN  (sizeof(struct inotify_event) + NAME_MAX + 1)
 
-#define LINELEN  150        //最长的一条 log 差不多 80 个字符
+#define LINELEN  120        //最长的一条 log 差不多 90 个字符
 #define STR(x)   STR2(x)
 #define STR2(x)  #x
 
@@ -23,7 +23,7 @@ static char *handleEvent(struct inotify_event *i, const char *file, char *p)
     long bytes_count;
     char str[LINELEN+1] = "";
     char player[20] = "";                                //人名最多 15 个字符
-    char player_lowercase[20] = "";                                //人名最多 15 个字符
+    char player_lowercase[20] = "";
     char cmdstr[32] = "";
 
     if (time(NULL)-pretime < 60)                         //距离前一次小于一分钟
@@ -41,6 +41,7 @@ static char *handleEvent(struct inotify_event *i, const char *file, char *p)
     while (ret != EOF) {
         ret = fscanf(fp, "%"STR(LINELEN)"[^\n]%*c", str);
     }
+    fclose(fp);
     printf("lastline: %s\n", str);
 
     char *p1, *p2;
@@ -49,17 +50,17 @@ static char *handleEvent(struct inotify_event *i, const char *file, char *p)
     if (!p1) {
         if (strstr(str, "You whisper to")) {              // check 
             pretime = time(NULL);
-            fclose(fp);
             free(p);
             return NULL;
         } else if (strstr(str, "No targets matched selector")) {
             sleep(4);                            //time between every check
             system(p);
-            fclose(fp);
             return p;
-        } else {
-            fclose(fp);
+        } else if (strstr(str, "Player disconnected: ")) {
+            free(p);
             return NULL;
+        } else {
+            return p;
         }
     }
 
@@ -78,7 +79,6 @@ static char *handleEvent(struct inotify_event *i, const char *file, char *p)
 
     sleep(8);                            //wait
     system(cmdstr);
-    fclose(fp);
     return strdup(cmdstr);
 }
 

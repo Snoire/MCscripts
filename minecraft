@@ -43,8 +43,7 @@ mc_start() {
     rm -f "$MCPATH/logs/empty_"*
     touch logs/empty_`date "+%Y-%m-%d_%H%M%S"`.log
     as_user "cd $MCPATH && screen -dmS ${SCREENNAME} /bin/bash -c \"$INVOCATION\""
-    as_user "screen -dmS ${SCREENNAME2} /bin/bash -c \"$INVOCATION2\""
-#    as_user "cd $MCPATH && screen -dmS ${SCREENNAME} /bin/bash -c $INVOCATION"
+#    as_user "screen -dmS ${SCREENNAME2} /bin/bash -c \"$INVOCATION2\""
     sleep 7
     if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
       echo "$SERVICE is now running."
@@ -54,34 +53,10 @@ mc_start() {
   fi
 }
 
-mc_saveoff() {
-  if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
-    echo "$SERVICE is running... suspending saves"
-    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER BACKUP STARTING...\"\015'"
-#    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"save-off\"\015'"
-#    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"save-all\"\015'"
-    sync
-    sleep 5
-  else
-    echo "$SERVICE is not running. Not suspending saves."
-  fi
-}
-
-mc_saveon() {
-  if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
-    echo "$SERVICE is running... re-enabling saves"
-#    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"save-on\"\015'"
-    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER BACKUP ENDED.\"\015'"
-  else
-    echo "$SERVICE is not running. Not resuming saves."
-  fi
-}
-
 mc_stop() {
   if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
     echo "Stopping $SERVICE"
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER SHUTTING DOWN IN 10 SECONDS...\"\015'"
-#    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"save-all\"\015'"
     sleep 5
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say SERVER SHUTTING DOWN IN 5 SECONDS...\"\015'"
     sleep 2
@@ -94,8 +69,7 @@ mc_stop() {
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"say stop...\"\015'"
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"stop\"\015'"
     sleep 6
-#    killall inotify
-    as_user "screen -S ${SCREENNAME2} -X quit"
+#    as_user "screen -S ${SCREENNAME2} -X quit"
     mc_log
 #    as_user "screen -S ${SCREENNAME} -X quit"
   else
@@ -105,6 +79,7 @@ mc_stop() {
   if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
     echo "Error! $SERVICE could not be stopped. Close screen manually."
     as_user "screen -S ${SCREENNAME} -X quit"
+    sleep 2
 #    rm -f "$MCPATH/logs/empty_"*
   else
     echo "$SERVICE is stopped."
@@ -121,8 +96,6 @@ mc_log() {
 }
 
 mc_backup() {
-#   mc_saveoff
-   
     NOW=`date "+%y%m%d_%H%M%S"`
     BACKUP_FILE="$BACKUPPATH/${WORLD}_${NOW}.mcworld"
     echo "Backing up minecraft world..."
@@ -148,7 +121,7 @@ mc_command() {
 #    echo "$SERVICE is running... executing command"
     echo "$command"
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
-    sleep .4 # assumes that the command will run and print to the log file in less than .4 seconds
+    sleep .6 # assumes that the command will run and print to the log file in less than 0.6 seconds
     # print output
     tail -n $((`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`-$pre_log_len)) "$MCPATH/logs/latest.log"
   fi
@@ -168,13 +141,14 @@ case "$1" in
     mc_start
     ;;
   backup)
-    mc_saveoff
     mc_backup
-    mc_saveon
     ;;
   sbackup)
     mc_stop
-    mc_backup
+    player_num=`cat $MCPATH/logs/previous.log | grep Player | wc -l`
+    if (( $player_num != 0 )); then
+      mc_backup
+    fi
     mc_start
     ;;
   cloudbak)
