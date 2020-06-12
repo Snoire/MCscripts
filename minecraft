@@ -102,16 +102,24 @@ mc_backup() {
     cd $MCPATH/worlds/survival-1
     zip -rq $BACKUP_FILE *
  
-    echo "Removing backup older than 3 days..."
-    as_user "find $BACKUPPATH -maxdepth 1 -name '*\.mcworld' -type f -mtime +2 -exec rm -vf '{}' \;"
- 
+#    echo "Removing backup older than 3 days..."
+#    as_user "find $BACKUPPATH -maxdepth 1 -name '*\.mcworld' -type f -mtime +2 -exec rm -vf '{}' \;"
+
+    echo "Removing all backups except for the latest three files..."
+    ReservedNum=3
+    FileNum=$(ls -l $BACKUPPATH | grep ^- | wc -l)
+    while (( $FileNum > $ReservedNum )); do
+        OldFile=$(ls -rt $BACKUPPATH | head -1)
+        /bin/rm -vf $BACKUPPATH/$OldFile
+        (( FileNum=FileNum-1 ))
+    done
     echo "Done."
 }
 
 mc_cloudbak() {
     cd $BACKUPPATH
     BACKUPFILE=`ls -t *mcworld | head -1`
-    dav $BACKUPFILE
+    /usr/local/bin/dav $BACKUPFILE
 }
 
 mc_command() {
