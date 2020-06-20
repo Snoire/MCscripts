@@ -119,14 +119,18 @@ mc_backup() {
 mc_cloudbak() {
     cd $BACKUPPATH
     BACKUPFILE=`ls -t *mcworld | head -1`
-    /usr/local/bin/dav $BACKUPFILE
+    fdate="${BACKUPFILE:9:6}"   # the date of the latest backup file
+    now=$(date "+%y%m%d")
+
+    if (((now-fdate)<9)); then
+        /usr/local/bin/dav $BACKUPFILE
+    fi
 }
 
 mc_command() {
   command="$1";
   if pgrep -u $USERNAME -f $SERVICE > /dev/null ; then
     pre_log_len=`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`
-#    echo "$SERVICE is running... executing command"
     echo "$command"
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
     sleep .6 # assumes that the command will run and print to the log file in less than 0.6 seconds
