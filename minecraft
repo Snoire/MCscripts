@@ -122,7 +122,7 @@ mc_cloudbak() {
     fdate="${BACKUPFILE:9:6}"   # the date of the latest backup file
     now=$(date "+%y%m%d")
 
-    if (((now-fdate)<9)); then
+    if (( ((now/10000-fdate/10000)*365+(now/100%100-fdate/100%100)*30+now%100-fdate%100)<9 )); then
         /usr/local/bin/dav $BACKUPFILE
     fi
 }
