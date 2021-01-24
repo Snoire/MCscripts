@@ -110,23 +110,21 @@ mc_cloudbak() {
 
 mc_command() {
     command="$1";
-    if { pgrep -u $MCUSER -f $SERVICE > /dev/null } {
-        lines1=${$(wc -l $MCPATH/logs/minecraft.log)[1]}
-        echo "$command"
-        as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
+    lines1=${$(wc -l $MCPATH/logs/minecraft.log)[1]}
+    echo "$command"
+    as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
 
-        local count=1
-        local lines2=$lines1
-        while [[ $lines2 == $lines1 ]] {
-            if (( count > 20 )) {
-                return
-            }
-            (( count++ ))
-            sleep 0.5
-            lines2=${$(wc -l $MCPATH/logs/minecraft.log)[1]}
+    local count=1
+    local lines2=$lines1
+    while [[ $lines2 == $lines1 ]] {
+        if (( count > 20 )) {
+            return
         }
-        tail -n +$(($lines1 + 2)) $MCPATH/logs/minecraft.log
+        (( count++ ))
+        sleep 0.5
+        lines2=${$(wc -l $MCPATH/logs/minecraft.log)[1]}
     }
+    tail -n +$(($lines1 + 2)) $MCPATH/logs/minecraft.log
 }
 
 
