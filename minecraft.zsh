@@ -92,8 +92,8 @@ mc_backup() {
 
     echo "Removing all backups except for the latest three files..."
     cd $MCPATH/worlds.backup
-    all_backups=(survival_<->_<->.mcworld(N))
-    new_backups=(survival_<->_<->.mcworld(om[1,3]N))
+    all_backups=((.|)survival_<->_<->.mcworld(N))
+    new_backups=((.|)survival_<->_<->.mcworld(om[1,3]N))
     rm -vf ${all_backups:|new_backups}
 
     echo "Done."
@@ -101,10 +101,12 @@ mc_backup() {
 
 mc_cloudbak() {
     cd $MCPATH/worlds.backup
-    BACKUPFILE=(survival_<->_<->.mcworld(m-9om[1]N))
+    BACKUPFILE=(survival_<->_<->.mcworld(om[1]N))
 
     if (( $#BACKUPFILE == 1 )) {
         dav $BACKUPFILE
+        autoload -U zmv
+        zmv '(survival_<->_<->.mcworld)' '.$1'
     }
 }
 
