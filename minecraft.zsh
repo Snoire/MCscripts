@@ -109,22 +109,29 @@ mc_cloudbak() {
 }
 
 mc_command() {
-    command="$1";
+    local quiet=0
+    if [[ $1 == "-q" ]] {
+        shift
+        quiet=1
+    }
+    command=$*;
     lines1=${$(wc -l $MCPATH/logs/minecraft.log)[1]}
-    echo "$command"
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
 
-    local count=1
-    local lines2=$lines1
-    while [[ $lines2 == $lines1 ]] {
-        if (( count > 20 )) {
-            return
+    if (( quiet == 0 )) {
+        local count=1
+        local lines2=$lines1
+        echo "$command"
+        while [[ $lines2 == $lines1 ]] {
+            if (( count > 20 )) {
+                return
+            }
+            (( count++ ))
+            sleep 0.5
+            lines2=${$(wc -l $MCPATH/logs/minecraft.log)[1]}
         }
-        (( count++ ))
-        sleep 0.5
-        lines2=${$(wc -l $MCPATH/logs/minecraft.log)[1]}
+        tail -n +$(($lines1 + 2)) $MCPATH/logs/minecraft.log
     }
-    tail -n +$(($lines1 + 2)) $MCPATH/logs/minecraft.log
 }
 
 
@@ -172,7 +179,7 @@ case $1 {
     if { pgrep -u $MCUSER -f $SERVICE > /dev/null } {
         if (( # > 1 )) {
             shift
-            mc_command "$*"
+            mc_command $*
         } else {
             echo "Must specify server command (try 'help'?)"
         }
@@ -182,7 +189,7 @@ case $1 {
     ;;
 
     (*)
-    echo "Usage: $0 {start|stop|backup|sbackup|cloudbak|status|restart|cmd \"server command\"}"
+    echo "Usage: $0 {start|stop|backup|sbackup|cloudbak|status|restart|cmd [-q] \"server command\"}"
     exit 1
     ;;
 }
