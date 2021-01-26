@@ -177,6 +177,31 @@ case $1 {
     }
     ;;
 
+    (showlog)
+    if (( # < 3 )) {
+        cd $MCPATH/logs
+        local num=1
+        (( # == 2 )) && num=$2
+
+        local all_logs=(*.log)
+        if (( num >= 1 && num <= $#all_logs )) {
+            if [[ -s minecraft.log ]] {
+                if (( num == 1 )) {
+                    sed '/Running AutoCompaction/d' minecraft.log | less
+                    exit 0
+                } else {
+                    logfile=(<->_<->.log(om[$((num-1))]))
+                }
+            } else {
+                logfile=(<->_<->.log(om[$num]))
+            }
+
+            less $logfile
+            exit 0
+        }
+    }
+    ;|
+
     (cmd)
     if { pgrep -u $MCUSER -f $SERVICE > /dev/null } {
         if (( # > 1 )) {
@@ -191,7 +216,9 @@ case $1 {
     ;;
 
     (*)
-    echo "Usage: $0 {start|stop|backup|sbackup|cloudbak|status|restart|cmd [-q] \"server command\"}"
+    local all_logs=($MCPATH/logs/*.log)
+    print -X7 -P 'usage: mc start%F{green}|%fstop%F{green}|%frestart%F{green}|%fbackup%F{green}|%fsbackup%F{green}|%fcloudbak\n'\
+                    "\tmc status%F{green}|%fshowlog [1-$#all_logs]%F{green}|%fcmd [-q] \"server command\""
     exit 1
     ;;
 }
