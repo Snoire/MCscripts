@@ -104,7 +104,7 @@ mc_cloudbak() {
     BACKUPFILE=(survival_<->_<->.mcworld(om[1]N))
 
     if (( $#BACKUPFILE == 1 )) {
-        dav $BACKUPFILE
+        /usr/local/bin/dav $BACKUPFILE
         autoload -U zmv
         zmv '(survival_<->_<->.mcworld)' '.$1'
     }
@@ -139,24 +139,20 @@ mc_command() {
 
 #Start-Stop here
 case $1 {
-    (start)
+(start)
     mc_start
     ;;
-
-    (stop)
+(stop)
     mc_stop
     ;;
-
-    (restart)
+(restart)
     mc_stop
     mc_start
     ;;
-
-    (backup)
+(backup)
     mc_backup
     ;;
-
-    (sbackup)
+(sbackup)
     mc_stop
     cd $MCPATH
     if { grep Player logs/<->_<->.log(om[1]) > /dev/null } {
@@ -164,20 +160,17 @@ case $1 {
     }
     mc_start
     ;;
-
-    (cloudbak)
+(cloudbak)
     mc_cloudbak
     ;;
-
-    (status)
+(status)
     if { pgrep -u $MCUSER -f $SERVICE > /dev/null } {
         echo "$SERVICE is running."
     } else {
         echo "$SERVICE is not running."
     }
     ;;
-
-    (showlog)
+(showlog)
     if (( # < 3 )) {
         cd $MCPATH/logs
         local num=1
@@ -201,8 +194,7 @@ case $1 {
         }
     }
     ;|
-
-    (cmd)
+(cmd)
     if { pgrep -u $MCUSER -f $SERVICE > /dev/null } {
         if (( # > 1 )) {
             shift
@@ -214,11 +206,10 @@ case $1 {
         echo "$SERVICE is not running."
     }
     ;;
-
-    (*)
+(*)
     local all_logs=($MCPATH/logs/*.log)
     print -X7 -P 'usage: mc start%F{green}|%fstop%F{green}|%frestart%F{green}|%fbackup%F{green}|%fsbackup%F{green}|%fcloudbak\n'\
-                    "\tmc status%F{green}|%fshowlog [1-$#all_logs]%F{green}|%fcmd [-q] \"server command\""
+                      "\tmc status%F{green}|%fshowlog [1-$#all_logs]%F{green}|%fcmd [-q] \"server command\""
     exit 1
     ;;
 }
