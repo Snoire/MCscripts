@@ -4,10 +4,11 @@
 SERVICE='bedrock_server'
 SCREENNAME='mc'
 MCUSER='mc'
-#WORLD='survival'
 MCPATH='/home/mc/minecraft'
-#BACKUPPATH=$MCPATH/worlds.backup
 INVOCATION="./bedrock_server"
+#WORLDNAME='survival'
+#LOGSPATH=$MCPATH/logs
+#BACKUPPATH=$MCPATH/worlds.backup
 
 as_user() {
     if [[ $USERNAME == $MCUSER ]] {
@@ -68,11 +69,7 @@ mc_stop() {
         (( count++ ))
         sleep 1
     }
-    mc_log
-    echo "$SERVICE is stopped."
-}
 
-mc_log() {
     cd $MCPATH/logs
     sed -i '/Running AutoCompaction/d' minecraft.log
     mv minecraft.log $(date "+%y%m%d_%H%M%S").log
@@ -80,6 +77,8 @@ mc_log() {
     all_logs=(<->_<->.log(N))
     new_logs=(<->_<->.log(om[1,32]N))
     rm -vf ${all_logs:|new_logs}
+
+    echo "$SERVICE is stopped."
 }
 
 mc_backup() {
@@ -90,10 +89,10 @@ mc_backup() {
     cd $MCPATH/worlds/survival-1
     zip -rq $BACKUP_FILE *
 
-    echo "Removing all backups except for the latest three files..."
+    echo "Removing all backups except for the latest seven files..."
     cd $MCPATH/worlds.backup
     all_backups=((.|)survival_<->_<->.mcworld(N))
-    new_backups=((.|)survival_<->_<->.mcworld(om[1,3]N))
+    new_backups=((.|)survival_<->_<->.mcworld(om[1,7]N))
     rm -vf ${all_backups:|new_backups}
 
     echo "Done."
@@ -116,7 +115,7 @@ mc_command() {
         shift
         quiet=1
     }
-    command=$*;
+    command=$*
     lines1=${$(wc -l $MCPATH/logs/minecraft.log)[1]}
     as_user "screen -p 0 -S ${SCREENNAME} -X eval 'stuff \"$command\"\015'"
 
@@ -206,10 +205,34 @@ case $1 {
         echo "$SERVICE is not running."
     }
     ;;
+(fire|grief)
+    if { pgrep -u $MCUSER -f $SERVICE > /dev/null } {
+        local rule=$1
+        shift
+        local quiet=0
+        if [[ $1 == "-q" ]] {
+            shift
+            quiet=1
+        }
+        if (( # == 1 )) && [[ $1 =~ 'on|off' ]] {
+            local -A table=(on true off false fire doFireTick grief mobgriefing)
+            echo "gamerule $table[$rule] $table[$1]"
+            mc_command gamerule $table[$rule] $table[$1]
+            if (( quiet != 0 )) {
+                mc_command -q "say Game rule doFireTick has been updated to false"
+            }
+            exit 0
+        }
+    } else {
+        echo "$SERVICE is not running."
+        exit 0
+    }
+    ;|
 (*)
     local all_logs=($MCPATH/logs/*.log)
     print -X7 -P 'usage: mc start%F{green}|%fstop%F{green}|%frestart%F{green}|%fbackup%F{green}|%fsbackup%F{green}|%fcloudbak\n'\
-                      "\tmc status%F{green}|%fshowlog [1-$#all_logs]%F{green}|%fcmd [-q] \"server command\""
+                      "\tmc status%F{green}|%fshowlog [1-$#all_logs]%F{green}|%fcmd [-q] \"server command\"\n"\
+                      "\tmc fire/grief [-q] on/off"
     exit 1
     ;;
 }
