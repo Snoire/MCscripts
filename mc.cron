@@ -1,0 +1,2 @@
+0 4 * * * /usr/local/bin/mc sbackup >/dev/null
+12 4 2,12,22 * * /usr/local/bin/mc cloudbak >/dev/null
