@@ -216,9 +216,8 @@ case $1 {
         }
         if (( # == 1 )) && [[ $1 =~ 'on|off' ]] {
             local -A table=(on true off false fire doFireTick grief mobgriefing)
-            echo "gamerule $table[$rule] $table[$1]"
             mc_command gamerule $table[$rule] $table[$1]
-            if (( quiet != 0 )) {
+            if (( quiet == 0 )) {
                 mc_command -q "say Game rule doFireTick has been updated to false"
             }
             exit 0
