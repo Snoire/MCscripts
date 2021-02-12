@@ -218,7 +218,7 @@ case $1 {
             local -A table=(on true off false fire doFireTick grief mobgriefing)
             mc_command gamerule $table[$rule] $table[$1]
             if (( quiet == 0 )) {
-                mc_command -q "say Game rule doFireTick has been updated to false"
+                mc_command -q "say Game rule $table[$rule] has been updated to $table[$1]"
             }
             exit 0
         }
