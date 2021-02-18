@@ -18,6 +18,13 @@ as_user() {
     }
 }
 
+mc_help() {
+    local all_logs=($MCPATH/logs/*.log)
+    print -X7 -P 'usage: mc start%F{green}|%fstop%F{green}|%frestart%F{green}|%fbackup%F{green}|%fsbackup%F{green}|%fcloudbak\n'\
+                      "\tmc status%F{green}|%fshowlog [1-$#all_logs]%F{green}|%fcmd [-q] \"server command\"\n"\
+                      "\tmc fire/grief [-q] on/off"
+}
+
 mc_start() {
     if { pgrep -u $MCUSER -f $SERVICE > /dev/null } {
         echo "$SERVICE is already running!"
@@ -138,6 +145,9 @@ mc_command() {
 
 #Start-Stop here
 case $1 {
+((--|)help|-h)
+    mc_help
+    ;;
 (start)
     mc_start
     ;;
@@ -228,10 +238,7 @@ case $1 {
     }
     ;|
 (*)
-    local all_logs=($MCPATH/logs/*.log)
-    print -X7 -P 'usage: mc start%F{green}|%fstop%F{green}|%frestart%F{green}|%fbackup%F{green}|%fsbackup%F{green}|%fcloudbak\n'\
-                      "\tmc status%F{green}|%fshowlog [1-$#all_logs]%F{green}|%fcmd [-q] \"server command\"\n"\
-                      "\tmc fire/grief [-q] on/off"
+    mc_help
     exit 1
     ;;
 }
